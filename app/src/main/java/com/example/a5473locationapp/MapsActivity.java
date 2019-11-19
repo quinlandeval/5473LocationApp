@@ -1,28 +1,54 @@
 package com.example.a5473locationapp;
 
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+import java.util.ArrayList;
+import java.util.List;
+
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, View.OnClickListener {
 
     private GoogleMap mMap;
+    private int PERMISSIONS;
+    LocationManager locationManager;
+    Location wifiLocation;
+    Location gpsLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        locationManager = (LocationManager) getApplicationContext().getSystemService(LOCATION_SERVICE);
+
+        Button wifi = (Button) findViewById(R.id.wifi_btn);
+        Button gps = (Button) findViewById(R.id.gps_btn);
+        wifi.setOnClickListener(this);
+        gps.setOnClickListener(this);
     }
 
 
@@ -35,13 +61,51 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
         // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET}, PERMISSIONS);
+        }
+        getGPSLocation();
+        getWifiLocation();
+        LatLng gpsMarker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
+        mMap.addMarker(new MarkerOptions().position(gpsMarker).title("GPS Marker"));
+        LatLng wifiMarker = new LatLng(wifiLocation.getLatitude(), wifiLocation.getLongitude());
+        mMap.addMarker(new MarkerOptions().position(wifiMarker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(gpsMarker));
     }
+
+    @SuppressLint("MissingPermission")
+    public void getWifiLocation() {
+        wifiLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        LatLng marker = new LatLng(wifiLocation.getLatitude(), wifiLocation.getLongitude());
+        mMap.addMarker(new MarkerOptions().position(marker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(marker));
+    }
+
+    @SuppressLint("MissingPermission")
+    public void getGPSLocation() {
+        gpsLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        LatLng marker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
+        mMap.addMarker(new MarkerOptions().position(marker).title("GPS Marker"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(marker));
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.gps_btn:
+                getGPSLocation();
+                break;
+
+            case R.id.wifi_btn:
+                getWifiLocation();
+                break;
+        }
+    }
+
 }
