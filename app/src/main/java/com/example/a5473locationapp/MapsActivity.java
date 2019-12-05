@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -25,8 +26,14 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+
+import static java.security.AccessController.getContext;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, View.OnClickListener {
 
@@ -39,6 +46,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     Handler handler;
     LatLng wifiMarker;
     LatLng gpsMarker;
+    LatLng fileLoc;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,8 +78,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         Button wifi = (Button) findViewById(R.id.wifi_btn);
         Button gps = (Button) findViewById(R.id.gps_btn);
+        Button file = (Button) findViewById(R.id.file);
         wifi.setOnClickListener(this);
         gps.setOnClickListener(this);
+        file.setOnClickListener(this);
     }
 
 
@@ -118,6 +128,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         gpsMarker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
         mMap.addMarker(new MarkerOptions().position(wifiMarker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
         mMap.addMarker(new MarkerOptions().position(gpsMarker).title("GPS Marker"));
+        if (fileLoc != null) {
+            mMap.addMarker(new MarkerOptions().position(fileLoc).title("File Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+        }
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 1000, listener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 1000, listener);
     }
@@ -132,11 +145,40 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             case R.id.wifi_btn:
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(wifiMarker));
                 break;
+
+            case R.id.file:
+                fromFile();
+                break;
         }
     }
 
-    public void begin() {
+    public void fromFile() {
+        String fileName = "location.txt";
+        StringBuffer buffer = new StringBuffer();
 
+        InputStream is = this.getResources().openRawResource(R.raw.location);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+
+        if (is != null) {
+            try {
+                double lat = Double.parseDouble(reader.readLine());
+                double lon = Double.parseDouble(reader.readLine());
+                fileLoc = new LatLng(lat, lon);
+                mMap.addMarker(new MarkerOptions().position(fileLoc).title("File Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(fileLoc));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Toast.makeText(this, "File not found.", Toast.LENGTH_SHORT).show();
+        }
+
+        try {
+            is.close();
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

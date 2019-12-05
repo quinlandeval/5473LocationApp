@@ -37,4 +37,15 @@
         android:textColor="#ffffff"
         android:layout_alignParentLeft="true" />
 
+    <Button
+        android:id="@+id/file"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="#359c5e"
+        android:padding="8dp"
+        android:layout_margin="5dp"
+        android:text="Read from File"
+        android:textColor="#ffffff"
+        android:layout_alignParentBottom="true"/>
+
 </RelativeLayout>
