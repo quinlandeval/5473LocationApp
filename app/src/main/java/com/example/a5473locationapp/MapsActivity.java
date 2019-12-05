@@ -8,9 +8,11 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
 
@@ -20,6 +22,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
@@ -32,6 +35,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     LocationManager locationManager;
     Location wifiLocation;
     Location gpsLocation;
+    private LocationListener listener;
+    Handler handler;
+    LatLng wifiMarker;
+    LatLng gpsMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +51,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
 
         locationManager = (LocationManager) getApplicationContext().getSystemService(LOCATION_SERVICE);
+        listener = new LocationListener(){
+            public void onLocationChanged(Location location) {
+                locationManager.removeUpdates(listener);
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+        };
+
+        handler = new Handler();
 
         Button wifi = (Button) findViewById(R.id.wifi_btn);
         Button gps = (Button) findViewById(R.id.gps_btn);
@@ -70,42 +93,50 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET}, PERMISSIONS);
         }
-        getGPSLocation();
-        getWifiLocation();
+        getLocation();
         LatLng gpsMarker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
         mMap.addMarker(new MarkerOptions().position(gpsMarker).title("GPS Marker"));
         LatLng wifiMarker = new LatLng(wifiLocation.getLatitude(), wifiLocation.getLongitude());
         mMap.addMarker(new MarkerOptions().position(wifiMarker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(gpsMarker));
+
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                getLocation();
+                handler.postDelayed(this, 10000);
+            }
+        }, 10000);
     }
 
     @SuppressLint("MissingPermission")
-    public void getWifiLocation() {
+    public void getLocation() {
+        mMap.clear();
         wifiLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        LatLng marker = new LatLng(wifiLocation.getLatitude(), wifiLocation.getLongitude());
-        mMap.addMarker(new MarkerOptions().position(marker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(marker));
-    }
-
-    @SuppressLint("MissingPermission")
-    public void getGPSLocation() {
         gpsLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        LatLng marker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
-        mMap.addMarker(new MarkerOptions().position(marker).title("GPS Marker"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(marker));
+        wifiMarker = new LatLng(wifiLocation.getLatitude(), wifiLocation.getLongitude());
+        gpsMarker = new LatLng(gpsLocation.getLatitude(), gpsLocation.getLongitude());
+        mMap.addMarker(new MarkerOptions().position(wifiMarker).title("WiFi Marker").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+        mMap.addMarker(new MarkerOptions().position(gpsMarker).title("GPS Marker"));
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 1000, listener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 1000, listener);
     }
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.gps_btn:
-                getGPSLocation();
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(gpsMarker));
                 break;
 
             case R.id.wifi_btn:
-                getWifiLocation();
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(wifiMarker));
                 break;
         }
+    }
+
+    public void begin() {
+
     }
 
 }
